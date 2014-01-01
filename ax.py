@@ -74,18 +74,21 @@ def direction(d):
 	'''	Set direction of data.  Either rx or tx'''						
 
 	GPIO.output(directionPin, d)	# set the pin
-	time.sleep(0.05)	# sleep for 50mS to allow things to settle.  Decreases checksum errors
+	#time.sleep(0.000050)	# sleep for 50uS to allow things to settle.  Decreases checksum errors
+	time.sleep(0.0005)
 
 	
 def ping(index) :
 	direction(tx)		# Set to TX mode
 	port.flushInput() 	  	# flush any garbage in the buffer
-	checksum = 255 - ((6 + index + regstart + rlength)%256)	# calculate the checksum	
-	outData = chr(0xFF)+chr(0xFF)+chr(index)+chr(0x04)+chr(AX_READ_DATA)+chr(regstart)+chr(rlength)+chr(checksum)	# build a string with the first part
-	port.write(outData)	# write it out of the serial port
+	checksum = 255 - ((index + AX_PING + 2)%256)	# calculate the checksum	
+	outData = chr(0xFF)+chr(0xFF)+chr(index)+chr(0x02)+chr(AX_PING)+chr(checksum)	# build a string with the first part
+	port.write(outData)	# write it out of the serial port	
+	getStatus(index)
+	
+def getStatus(index) :
 	vals = list()	# build empty list
 	direction(rx)	# configure for RX mode
-	
 	try :
 		h1 = port.read()   # 0xff, used to make sure the servo responds	
 		assert ord(h1) == 0xFF # Make sure the header byte is right
@@ -108,8 +111,8 @@ def ping(index) :
 			raise axError(e)	# raise the error
 
 		
-		if rlength == 1:	# If it's just a single byte then return it
-			return vals[0]
+		#if rlength == 1:	# If it's just a single byte then return it
+		#	return vals[0]
 		return vals			# It's more than one byte so return the list
 		
 	except Exception, detail:
@@ -167,6 +170,23 @@ def getReg(index, regstart, rlength):
 def setposition(index, position) :
 	setReg(index,30,((position%256),(position>>8)))  # Moves servo to specified position
 
+def learnServos(minValue=1, maxValue=32, timeout=0.25, verbose=False) :
+	oldTimeout = port.timeout	# Save the original timeout
+	port.timeout = timeout		# set timeout to something fast
+	servoList = []					# Init an empty list
+	for i in range(minValue, maxValue + 1) :	# loop through possible servos
+		try :
+			temp = ping(i)	
+			time.sleep(.1)		
+			servoList.append(i)					# It no errors happened so we assume it's a good ID 
+			if verbose: print "Found servo #" + str(i)
+			
+		except Exception, detail:	
+			if verbose : print "Error testing #" + str(i) + ': ' + str(detail)
+			pass
+			
+	port.timeout = oldTimeout
+	return servoList
 
 if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
 	while True :
