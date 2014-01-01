@@ -36,6 +36,7 @@ AX_REG_WRITE = 4
 AX_WRITE_DATA = 3
 AX_READ_DATA = 2			# Corrected to 02.  Was 04
 AX_PING = 1
+BROADCASTID = 0xFE
 
 port = serial.Serial()         # create a serial port object
 port.baudrate = 1000000        # baud rate, in bits/second
@@ -118,6 +119,38 @@ def getStatus(index) :
 	except Exception, detail:
 		raise axError(detail)
 
+def reset(index) :
+	'''
+	Reset servo to factory default settings.
+	THIS WILL DESTROY ALL SETTINGS ON THE SERVO!!!!
+	'''
+	direction(tx)				# set the direction to be transmit
+	length = 2	# configure length
+	checksum = 255-((index+length+AX_RESET)%256)    # calculate checksum, same as ~(sum(data))  
+	port.write(chr(0xFF)+chr(0xFF)+chr(index)+chr(length)+chr(AX_RESET))	# Write the first part of the protocol
+	port.write(chr(checksum))	# write the checksum
+	direction(rx)			# Switch back to RX mode		
+
+def reg_write(index, reg, values) :
+	''' Set register values but don't act on them'''
+	direction(tx)				# set the direction to be transmit
+	length = 3 + len(values)	# configure length
+	checksum = 255-((index+length+AX_REG_WRITE+reg+sum(values))%256)    # calculate checksum, same as ~(sum(data))  
+	port.write(chr(0xFF)+chr(0xFF)+chr(index)+chr(length)+chr(AX_REG_WRITE)+chr(reg))	# Write the first part of the protocol
+	for val in values:		# actually writes the data payload
+		port.write(chr(val))	# chr(val) sends the binary data rather than ASCII
+	port.write(chr(checksum))	# write the checksum
+	direction(rx)			# Switch back to RX mode
+	
+def action(index) :
+	''' Act on set values'''
+	direction(tx)				# set the direction to be transmit
+	length = 2			# configure length
+	checksum = 255-((index+length+AX_ACTION)%256)    # calculate checksum, same as ~(sum(data))  
+	port.write(chr(0xFF)+chr(0xFF)+chr(index)+chr(length)+chr(AX_ACTION))	# Write the first part of the protocol	
+	port.write(chr(checksum))	# write the checksum
+	direction(rx)			# Switch back to RX mode
+	
 def setReg(index, reg,values):		# Corrected first arg to 'index'
 	''' Set register values'''
 	direction(tx)				# set the direction to be transmit
