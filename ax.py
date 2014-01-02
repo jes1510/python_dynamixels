@@ -131,6 +131,25 @@ def reset(index) :
 	port.write(chr(checksum))	# write the checksum
 	direction(rx)			# Switch back to RX mode		
 
+def sync_write(indexes, reg, values):
+	direction(tx)
+	length = (len(values[0]) + 1) * len(indexes) + 4
+	indexSum = sum(indexes)	
+	valuesSum = 0
+	for i in range(0, len(values)) :
+		valuesSum += sum(values[i])		
+		
+	checksum = 255-((indexSum+length+AX_SYNC_WRITE+reg+valuesSum)%256)    # calculate checksum, same as ~(sum(data))  
+	port.write((chr(0xFF)+chr(0xFF)+chr(BROADCASTID)+chr(length)+chr(AX_REG_WRITE)+chr(reg) + chr(len(values[0]))))
+
+	for i in range(0, len(indexes)):	
+		port.write(chr(indexes[i]))
+		for val in values[i] :
+			port.write(chr(val))
+			
+	port.write(chr(checksum))
+
+
 def reg_write(index, reg, values) :
 	''' Set register values but don't act on them'''
 	direction(tx)				# set the direction to be transmit
@@ -199,6 +218,42 @@ def getReg(index, regstart, rlength):
 		
 	except Exception, detail:
 		raise axError(detail)
+		
+def getPose2(indexes) :
+	''' Steps through the Servos in in the list a gets their positions.
+	Returns a dictionary of positions with the servo ID's as keys
+	'''
+	pose = {}
+	for i in indexes :
+		raw = getReg(i, 36, 2)[0:2]		
+		pose[i] = (raw[0] | (raw[1] << 8))
+	return pose
+
+def getPose(indexes) :
+	''' Steps through the Servos in in the list a gets their positions.
+	Returns a list of positions that correspond to the servos'''
+	pose = []
+	for i in indexes :
+		raw = getReg(i, 36, 2)[0:2]		
+		pose.append(raw[0] | (raw[1] << 8))
+	return pose
+			
+def setPositionDelayed(index, position) :
+	reg_write(index, ((position%256, position>>8)))
+
+def groupMove2(servoDict) :
+	''' Move a group of servos to specified positions.  Uses Dictionary'''
+	for i in servoDict.keys() :
+		reg_write(i, 30, ((servoDict[i]%256, servoDict[i]>>8)))	
+			
+	action(BROADCASTID)	
+	
+def groupMove(indexes, positions) :
+	''' Move a group of servos to specified positions'''
+	for i in range(0, len(indexes)):	
+		reg_write(indexes[i], 30, ((positions[i]%256, positions[i]>>8)))
+			
+	action(BROADCASTID)
 	
 def setposition(index, position) :
 	setReg(index,30,((position%256),(position>>8)))  # Moves servo to specified position
