@@ -51,6 +51,8 @@ rx = GPIO.HIGH			# High for RX mode
 directionPin = 18		# GPIO pin connected to Enable pins on buffer
 GPIO.setup(directionPin, GPIO.OUT)	# Configure pin for output
 
+connectedServos = []
+
 # Error lookup dictionary for bit masking
 dictErrors = {	1 : "Input Voltage",
 				2 : "Angle Limit",
@@ -224,7 +226,8 @@ def getPose2(indexes) :
 	Returns a dictionary of positions with the servo ID's as keys
 	'''
 	pose = {}
-	for i in indexes :
+	
+	for i in indexes :		
 		raw = getReg(i, 36, 2)[0:2]		
 		pose[i] = (raw[0] | (raw[1] << 8))
 	return pose
@@ -236,10 +239,8 @@ def getPose(indexes) :
 	for i in indexes :
 		raw = getReg(i, 36, 2)[0:2]		
 		pose.append(raw[0] | (raw[1] << 8))
-	return pose
-			
-def setPositionDelayed(index, position) :
-	reg_write(index, ((position%256, position>>8)))
+	return pose		
+
 
 def groupMove2(servoDict) :
 	''' Move a group of servos to specified positions.  Uses Dictionary'''
@@ -255,6 +256,13 @@ def groupMove(indexes, positions) :
 			
 	action(BROADCASTID)
 	
+def relax(indexes) :		
+	'''
+	Turn off toque for list of servos
+	'''
+	for i in indexes:
+		setReg(i, 24, [0])  # Turn off torque
+		
 def setposition(index, position) :
 	setReg(index,30,((position%256),(position>>8)))  # Moves servo to specified position
 
@@ -276,15 +284,71 @@ def learnServos(minValue=1, maxValue=32, timeout=0.25, verbose=False) :
 	port.timeout = oldTimeout
 	return servoList
 
+def writePose(Arguments) :	
+	of = open(Arguments.outfile, 'w')
+	pose = getPose2(connectedServos)
+	if Arguments.verbose : 
+		print "Servo Positions"
+		print "---------------"
+	for key in  pose.keys():
+		if Arguments.verbose : print "Servo " + str(key), pose[key]
+		of.write(str(key) + ':' + str(pose[key]) + '\n')
+	
+	if Arguments.verbose :
+		print "Wrote pose to " + Arguments.outfile
+		print 	
+	
+	of.close()
+	
+def processArgs(Arguments) :
+	global connectedServos
+	
+	if Arguments.learn :		
+		connectedServos = learnServos(int(Arguments.servomin), int(Arguments.servomax), verbose=Arguments.verbose)
+	
+	if Arguments.servos :		
+		connectedServos = map(int, Arguments.servos.split(','))
+		
+		
+	if Arguments.savepose :		
+		writePose(Arguments)	
+	
+		
+	
+	
+def parseArgs() :
+	parser = argparse.ArgumentParser(description="Rudementary command parser for AX12 servos")
+	parser.add_argument('--outfile', default= 'pose.txt', action='store', help='Specify name of output file')
+	parser.add_argument('--servomin', default=0, action='store', help='Specify minimum servo')
+	parser.add_argument('--servomax', default=32, action='store', help='Specify maximum servo')
+	parser.add_argument('--learn', 	action='store_true', help='Automatically discover attached servos')
+	parser.add_argument('--verbose', action='store_true', help='Show output in verbose mode')
+	parser.add_argument('--savepose', action='store_true', help='Read the servos and save the positions to a file')
+	parser.add_argument('--servos', action='store', help='Specify particular servos.  Lists must be comma seperated with no spaces')
+	parser.parse_args(namespace=Arguments)
+	#print dir(Arguments)
+
+	return Arguments
+		
+	
+	
+class Arguments(object) :
+	pass
+	
 if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
-	while True :
-		print "position", getReg(1, 36, 2)				# get the current position
-		setposition(1, 0)
-		print "temp:", getReg(1,43,1)               # get the temperature
+	import argparse		
+	processArgs(parseArgs())
+	
+	#while True :
 		
 		
-		time.sleep(3)
-		print "position", getReg(1, 36, 2)				# get the current position
-		setposition(1, 1023)
+		#print "position", getReg(1, 36, 2)				# get the current position
+		#setposition(1, 0)
+		#print "temp:", getReg(1,43,1)               # get the temperature
 		
-		time.sleep(3)
+		
+		#time.sleep(3)
+		#print "position", getReg(1, 36, 2)				# get the current position
+		#setposition(1, 1023)
+		
+		#time.sleep(3)
