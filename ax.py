@@ -50,6 +50,7 @@ tx = GPIO.LOW			# Low for TX mode
 rx = GPIO.HIGH			# High for RX mode
 directionPin = 18		# GPIO pin connected to Enable pins on buffer
 GPIO.setup(directionPin, GPIO.OUT)	# Configure pin for output
+disableDirPin = False
 
 connectedServos = []
 
@@ -74,11 +75,12 @@ class timeoutError(Exception) :	pass
 	
 
 def direction(d):	
-	'''	Set direction of data.  Either rx or tx'''						
-
-	GPIO.output(directionPin, d)	# set the pin
-	#time.sleep(0.000050)	# sleep for 50uS to allow things to settle.  Decreases checksum errors
-	time.sleep(0.0005)
+	'''	Set direction of data.  Either rx or tx'''
+					
+	if not disableDirPin :
+		GPIO.output(directionPin, d)	# set the pin
+		#time.sleep(0.000050)	# sleep for 50uS to allow things to settle.  Decreases checksum errors
+		time.sleep(0.0005)
 
 	
 def ping(index) :
@@ -134,6 +136,9 @@ def reset(index) :
 	direction(rx)			# Switch back to RX mode		
 
 def sync_write(indexes, reg, values):
+	'''
+	Synchronized write for multiple servos
+	'''
 	direction(tx)
 	length = (len(values[0]) + 1) * len(indexes) + 4
 	indexSum = sum(indexes)	
@@ -226,32 +231,32 @@ def getPose2(indexes) :
 	Steps through the Servos in in the list a gets their positions.
 	Returns a dictionary of positions with the servo ID's as keys
 	'''
-	pose = {}
+	pose = {}			# Empty dictionary to hold the positions
 	
 	for i in indexes :		
-		raw = getReg(i, 36, 2)[0:2]		
-		pose[i] = (raw[0] | (raw[1] << 8))
-	return pose
+		raw = getReg(i, 36, 2)[0:2]			# read the register on the servo
+		pose[i] = (raw[0] | (raw[1] << 8))	# add it to the dictionary
+	return pose	
 
 def getPose(indexes) :
 	''' 
 	Steps through the Servos in in the list a gets their positions.
 	Returns a list of positions that correspond to the servos
 	'''
-	pose = []
+	pose = []			# empty list to hold the pose
 	for i in indexes :
-		raw = getReg(i, 36, 2)[0:2]		
-		pose.append(raw[0] | (raw[1] << 8))
+		raw = getReg(i, 36, 2)[0:2]				# Read the current position
+		pose.append(raw[0] | (raw[1] << 8))		# Append it to the list
 	return pose		
 
 
 def groupMove2(servoDict) :
 	''' Move a group of servos to specified positions.  Uses Dictionary'''
-	for i in servoDict.keys() :	
+	for i in servoDict.keys() :		# step through the keys
 		if Arguments.verbose : print "Group Move2", i , "to Pos:", servoDict[i]	
-		reg_write(i, 30, ((servoDict[i]%256, servoDict[i]>>8)))	
+		reg_write(i, 30, ((servoDict[i]%256, servoDict[i]>>8)))	 # Write the data to the servo, using reg_write
 			
-	action(BROADCASTID)	
+	action(BROADCASTID)		# tell all servos to move to the written positions
 	
 def groupMove(indexes, positions) :
 	''' Move a group of servos to specified positions'''
@@ -259,13 +264,13 @@ def groupMove(indexes, positions) :
 		if Arguments.verbose : print "Group Move", indexes[i], "to Pos:", positions[i]	
 		reg_write(indexes[i], 30, ((positions[i]%256, positions[i]>>8)))
 			
-	action(BROADCASTID)
+	action(BROADCASTID)		# tell all servos to perform the action
 	
 def relax(indexes) :		
 	'''
 	Turn off toque for list of servos
 	'''
-	for i in indexes:
+	for i in indexes:	# Step through the servos
 		if Arguments.verbose : print "Relaxing servo", i		
 		setReg(i, 24, [0])  # Turn off torque
 		
@@ -277,21 +282,21 @@ def learnServos(minValue=1, maxValue=32, timeout=0.25, verbose=False) :
 	Step through the possible servos and ping them
 	Add the found servos to a list and return it
 	'''
-	oldTimeout = port.timeout	# Save the original timeout
-	port.timeout = timeout		# set timeout to something fast
+	oldTimeout = port.timeout		# Save the original timeout
+	port.timeout = timeout			# set timeout to something fast
 	servoList = []					# Init an empty list
 	for i in range(minValue, maxValue + 1) :	# loop through possible servos
 		try :
-			temp = ping(i)	
-			time.sleep(.1)		
-			servoList.append(i)					# It no errors happened so we assume it's a good ID 
+			temp = ping(i)			# Request a pingt packet				
+			servoList.append(i)		# No errors happened so we assume it's a good ID 
 			if verbose: print "Found servo #" + str(i)
+			time.sleep(.1)			# A wee bit of sleep to keep from pounding the bus
 			
 		except Exception, detail:	
 			if verbose : print "Error pinging servo #" + str(i) + ': ' + str(detail)
 			pass
 			
-	port.timeout = oldTimeout
+	port.timeout = oldTimeout		# set the timeout to the original
 	return servoList
 	
 def playPose() :
@@ -314,60 +319,82 @@ def writePose() :
 	'''
 	Read the servos and save the positions to a file
 	'''	
-	of = open(Arguments.outfile, 'w')
-	pose = getPose2(connectedServos)
+	of = open(Arguments.savepose, 'w')		# open the output file
+	pose = getPose2(connectedServos)		# get the positions
 	if Arguments.verbose : 
 		print "Servo Positions"
 		print "---------------"
-	for key in  pose.keys():
+	for key in  pose.keys():				# step through the keys, writing to the file
 		if Arguments.verbose : print "Servo " + str(key), pose[key]
-		of.write(str(key) + ':' + str(pose[key]) + '\n')
+		of.write(str(key) + ':' + str(pose[key]) + '\n')	# Write to the file
 	
 	if Arguments.verbose :
-		print "Wrote pose to " + Arguments.outfile
+		print "Wrote pose to " + Arguments.savepose
 		print 	
 	
-	of.close()
+	of.close()		# close the file
 	
 def processArgs() :
+	'''
+	Process the arguments after parsing
+	'''
 	global connectedServos
 	
-	if Arguments.learn :		
+	if Arguments.port :			# specify a different serial port
+		port.port = Arguments.port	
+		
+	if Arguments.nodir :			# allow the DIR pin to be disabled		
+		global disableDirPin
+		disableDirPin = True
+		
+	if Arguments.baud :
+		port.baudrate = int(Arguments.baud)
+	
+	if Arguments.timeout :
+		port.timeout = int(Arguments.timeout)
+	
+	if Arguments.learn :		# Learn the connected servos	
 		connectedServos = learnServos(int(Arguments.servomin), int(Arguments.servomax), verbose=Arguments.verbose)
 	
-	if Arguments.servos :		
+	if Arguments.servos :		# Servos were specified in arguments
 		connectedServos = map(int, Arguments.servos.split(','))		
 		
-	if Arguments.savepose :		
+	if Arguments.savepose :		# Write the current pose to a file
 		writePose()	
 		
-	if Arguments.playpose :		
+	if Arguments.playpose :		# Play an old pose from a file
 		playPose()
 	
-	if Arguments.relax :		
+	if Arguments.relax :		# Relax all the servos (for posing)
 		relax(connectedServos) 
 		
+
 		
 	
 	
 def parseArgs() :
+	'''
+	Parse the command line arguments
+	'''
 	parser = argparse.ArgumentParser(description="Rudementary command parser for manipulating AX12 servos")
-	parser.add_argument('--outfile', default= 'pose.txt', action='store', help='Specify name of output file')
 	parser.add_argument('--servomin', default=0, action='store', help='Specify minimum servo')
 	parser.add_argument('--servomax', default=32, action='store', help='Specify maximum servo')
 	parser.add_argument('--learn', 	action='store_true', help='Automatically discover attached servos')
 	parser.add_argument('--verbose', action='store_true', help='Show output in verbose mode')
-	parser.add_argument('--savepose', action='store_true', help='Read the servos and save the positions to a file')
+	parser.add_argument('--savepose', action='store', help='Read the servos and save the positions to a file')
 	parser.add_argument('--servos', action='store', help='Specify particular servos.  Lists must be comma seperated with no spaces')
 	parser.add_argument('--playpose', action='store', help='Move the servos to positions specified in pose')
 	parser.add_argument('--relax', action='store_true', help='Relax the servos')
-	parser.parse_args(namespace=Arguments)
-	
-	return Arguments
+	parser.add_argument('--nodir', action='store_true', help='Disable use of direction pin')
+	parser.add_argument('--port', action='store', help="Specify different serial port ie '/dev/ttyACM0")
+	parser.add_argument('--baud', action='store', help="Specify baud rate for the serial port")
+	parser.add_argument('--timeout', action='store', help="Specify timeout for the serial port")	
+	parser.parse_args(namespace=Arguments)	
+
 		
 	
 	
-class Arguments(object) :
+class Arguments(object) :	# dummy class for command line arguments
 	pass
 	
 if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
@@ -375,18 +402,4 @@ if __name__ == '__main__' :		# Running as a standalone, loop and print temperatu
 	parseArgs()	
 	processArgs()
 	
-	#while True :
-		
-		
-		#print "position", getReg(1, 36, 2)				# get the current position
-		##setposition(1, 0)
-		#groupMove2({1:1})
-		#print "temp:", getReg(1,43,1)               # get the temperature
-		
-		
-		#time.sleep(3)
-		#print "position", getReg(1, 36, 2)				# get the current position
-		##setposition(1, 1023)
-		#groupMove2({1:1023})
-		
-		#time.sleep(3)
+	
