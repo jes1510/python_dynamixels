@@ -222,7 +222,8 @@ def getReg(index, regstart, rlength):
 		raise axError(detail)
 		
 def getPose2(indexes) :
-	''' Steps through the Servos in in the list a gets their positions.
+	''' 
+	Steps through the Servos in in the list a gets their positions.
 	Returns a dictionary of positions with the servo ID's as keys
 	'''
 	pose = {}
@@ -233,8 +234,10 @@ def getPose2(indexes) :
 	return pose
 
 def getPose(indexes) :
-	''' Steps through the Servos in in the list a gets their positions.
-	Returns a list of positions that correspond to the servos'''
+	''' 
+	Steps through the Servos in in the list a gets their positions.
+	Returns a list of positions that correspond to the servos
+	'''
 	pose = []
 	for i in indexes :
 		raw = getReg(i, 36, 2)[0:2]		
@@ -244,14 +247,16 @@ def getPose(indexes) :
 
 def groupMove2(servoDict) :
 	''' Move a group of servos to specified positions.  Uses Dictionary'''
-	for i in servoDict.keys() :
+	for i in servoDict.keys() :	
+		if Arguments.verbose : print "Group Move2", i , "to Pos:", servoDict[i]	
 		reg_write(i, 30, ((servoDict[i]%256, servoDict[i]>>8)))	
 			
 	action(BROADCASTID)	
 	
 def groupMove(indexes, positions) :
 	''' Move a group of servos to specified positions'''
-	for i in range(0, len(indexes)):	
+	for i in range(0, len(indexes)):
+		if Arguments.verbose : print "Group Move", indexes[i], "to Pos:", positions[i]	
 		reg_write(indexes[i], 30, ((positions[i]%256, positions[i]>>8)))
 			
 	action(BROADCASTID)
@@ -267,6 +272,10 @@ def setposition(index, position) :
 	setReg(index,30,((position%256),(position>>8)))  # Moves servo to specified position
 
 def learnServos(minValue=1, maxValue=32, timeout=0.25, verbose=False) :
+	'''
+	Step through the possible servos and ping them
+	Add the found servos to a list and return it
+	'''
 	oldTimeout = port.timeout	# Save the original timeout
 	port.timeout = timeout		# set timeout to something fast
 	servoList = []					# Init an empty list
@@ -278,13 +287,32 @@ def learnServos(minValue=1, maxValue=32, timeout=0.25, verbose=False) :
 			if verbose: print "Found servo #" + str(i)
 			
 		except Exception, detail:	
-			if verbose : print "Error testing #" + str(i) + ': ' + str(detail)
+			if verbose : print "Error pinging servo #" + str(i) + ': ' + str(detail)
 			pass
 			
 	port.timeout = oldTimeout
 	return servoList
+	
+def playPose() :
+	'''
+	Open a file and move the servos to specified positions in a group move
+	'''
+	infile=open(Arguments.playpose, 'r')	# Open the file 
+	poseDict = {}							# Dictionary to hold poses and positions
+	if Arguments.verbose : print "Reading pose from", Arguments.playpose
+	for line in infile.readlines() :		# Read the file and step through it
+		servo = int(line.split(':')[0])		# Servo is first
+		position = int(line.split(':')[1])	# Position is second
+		poseDict[servo]=position			# add the servo to the Dictionary
 
-def writePose(Arguments) :	
+	groupMove2(poseDict)
+		
+	
+
+def writePose() :
+	'''
+	Read the servos and save the positions to a file
+	'''	
 	of = open(Arguments.outfile, 'w')
 	pose = getPose2(connectedServos)
 	if Arguments.verbose : 
@@ -300,24 +328,26 @@ def writePose(Arguments) :
 	
 	of.close()
 	
-def processArgs(Arguments) :
+def processArgs() :
 	global connectedServos
 	
 	if Arguments.learn :		
 		connectedServos = learnServos(int(Arguments.servomin), int(Arguments.servomax), verbose=Arguments.verbose)
 	
 	if Arguments.servos :		
-		connectedServos = map(int, Arguments.servos.split(','))
-		
+		connectedServos = map(int, Arguments.servos.split(','))		
 		
 	if Arguments.savepose :		
-		writePose(Arguments)	
+		writePose()	
+		
+	if Arguments.playpose :		
+		playPose()
 	
 		
 	
 	
 def parseArgs() :
-	parser = argparse.ArgumentParser(description="Rudementary command parser for AX12 servos")
+	parser = argparse.ArgumentParser(description="Rudementary command parser for manipulating AX12 servos")
 	parser.add_argument('--outfile', default= 'pose.txt', action='store', help='Specify name of output file')
 	parser.add_argument('--servomin', default=0, action='store', help='Specify minimum servo')
 	parser.add_argument('--servomax', default=32, action='store', help='Specify maximum servo')
@@ -325,9 +355,9 @@ def parseArgs() :
 	parser.add_argument('--verbose', action='store_true', help='Show output in verbose mode')
 	parser.add_argument('--savepose', action='store_true', help='Read the servos and save the positions to a file')
 	parser.add_argument('--servos', action='store', help='Specify particular servos.  Lists must be comma seperated with no spaces')
+	parser.add_argument('--playpose', action='store', help='Move the servos to positions specified in pose')
 	parser.parse_args(namespace=Arguments)
-	#print dir(Arguments)
-
+	
 	return Arguments
 		
 	
@@ -336,19 +366,22 @@ class Arguments(object) :
 	pass
 	
 if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
-	import argparse		
-	processArgs(parseArgs())
+	import argparse	
+	parseArgs()	
+	processArgs()
 	
 	#while True :
 		
 		
 		#print "position", getReg(1, 36, 2)				# get the current position
-		#setposition(1, 0)
+		##setposition(1, 0)
+		#groupMove2({1:1})
 		#print "temp:", getReg(1,43,1)               # get the temperature
 		
 		
 		#time.sleep(3)
 		#print "position", getReg(1, 36, 2)				# get the current position
-		#setposition(1, 1023)
+		##setposition(1, 1023)
+		#groupMove2({1:1023})
 		
 		#time.sleep(3)
