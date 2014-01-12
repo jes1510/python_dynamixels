@@ -266,6 +266,7 @@ def relax(indexes) :
 	Turn off toque for list of servos
 	'''
 	for i in indexes:
+		if Arguments.verbose : print "Relaxing servo", i		
 		setReg(i, 24, [0])  # Turn off torque
 		
 def setposition(index, position) :
@@ -343,6 +344,9 @@ def processArgs() :
 	if Arguments.playpose :		
 		playPose()
 	
+	if Arguments.relax :		
+		relax(connectedServos) 
+		
 		
 	
 	
@@ -356,6 +360,7 @@ def parseArgs() :
 	parser.add_argument('--savepose', action='store_true', help='Read the servos and save the positions to a file')
 	parser.add_argument('--servos', action='store', help='Specify particular servos.  Lists must be comma seperated with no spaces')
 	parser.add_argument('--playpose', action='store', help='Move the servos to positions specified in pose')
+	parser.add_argument('--relax', action='store_true', help='Relax the servos')
 	parser.parse_args(namespace=Arguments)
 	
 	return Arguments
