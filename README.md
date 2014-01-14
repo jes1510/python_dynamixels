@@ -18,7 +18,11 @@ ported to allow running on Raspberry pi.
 
 The script assumes that it is connected to the servo through a buffer
 such as a 74HC125. The communication direction is controlled through
-a GPIO pin.
+GPIO pin 8.  A schematic for the circuit can be found on page 8 of
+the AX12 manual here:
+http://www.trossenrobotics.com/images/productdownloads/AX-12%28English%29.pdf
+
+
 
 If a Raspberry Pi is being used then the startup config needs to be modified to
 set the UART crystal to allow 1Mbps transfer. The TTY attached to the com
