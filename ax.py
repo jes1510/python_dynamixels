@@ -324,6 +324,7 @@ def writePose() :
 	if Arguments.verbose : 
 		print "Servo Positions"
 		print "---------------"
+		
 	for key in  pose.keys():				# step through the keys, writing to the file
 		if Arguments.verbose : print "Servo " + str(key), pose[key]
 		of.write(str(key) + ':' + str(pose[key]) + '\n')	# Write to the file
