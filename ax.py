@@ -398,7 +398,7 @@ def parseArgs() :
 class Arguments(object) :	# dummy class for command line arguments
 	pass
 	
-if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
+if __name__ == '__main__' :		# Running as a standalone, read args and run the commands
 	import argparse	
 	parseArgs()	
 	processArgs()
