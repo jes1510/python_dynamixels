@@ -11,7 +11,7 @@ You should have received a copy of the GNU General Public License along with thi
 Use it at your own risk. Assume that I have no idea what I am doing.
 
 Low level script to control AX 12 servos from Robotis. Based on original script
-by Michael Ferguson. Found here:
+by Inxfergy. Found here:
 http://forums.trossenrobotics.com/tutorials/how-to-diy-128/controlling-ax-12-servos-3275/
 The scipt was slightly modified to fix errors and
 ported to allow running on Raspberry pi.
