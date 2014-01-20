@@ -11,7 +11,7 @@ You should have received a copy of the GNU General Public License along with thi
 Use it at your own risk. Assume that I have no idea what I am doing.
 
 Low level script to control AX 12 servos from Robotis. Based on original script
-by Michael Ferguson. Found here:
+by Inxfergy. Found here:
 http://forums.trossenrobotics.com/tutorials/how-to-diy-128/controlling-ax-12-servos-3275/
 The scipt was slightly modified to fix errors and
 ported to allow running on Raspberry pi.
@@ -22,11 +22,14 @@ GPIO pin 8.  A schematic for the circuit can be found on page 8 of
 the AX12 manual here:
 http://www.trossenrobotics.com/images/productdownloads/AX-12%28English%29.pdf
 
-
-
 If a Raspberry Pi is being used then the startup config needs to be modified to
 set the UART crystal to allow 1Mbps transfer. The TTY attached to the com
 port needs to be disabled as well. Make sure to set the baud rate of
-the TTY to 1Mbps
+the TTY to 1Mbps.  A BASH script is included to set the TTY baud rate.  This 
+page has a great deal of information on what else needs to be done to disconnect
+the serial port from the console.  I also used it when first unraveling
+the AX12 protocol.
+http://www.oppedijk.com/robotics/control-dynamixel-with-raspberrypi
+
 -Jesse Merritt
 '''
