@@ -266,6 +266,8 @@ def groupMove(indexes, positions) :
 			
 	action(BROADCASTID)		# tell all servos to perform the action
 	
+
+	
 def relax(indexes) :		
 	'''
 	Turn off toque for list of servos
@@ -324,6 +326,7 @@ def writePose() :
 	if Arguments.verbose : 
 		print "Servo Positions"
 		print "---------------"
+		
 	for key in  pose.keys():				# step through the keys, writing to the file
 		if Arguments.verbose : print "Servo " + str(key), pose[key]
 		of.write(str(key) + ':' + str(pose[key]) + '\n')	# Write to the file
@@ -366,9 +369,12 @@ def processArgs() :
 		playPose()
 	
 	if Arguments.relax :		# Relax all the servos (for posing)
-		relax(connectedServos) 
-		
+		relax(connectedServos) 		
 
+	if Arguments.center :
+		positions = []
+		for i in connectedServos: positions.append(512)
+		groupMove(connectedServos, positions)
 		
 	
 	
@@ -385,6 +391,7 @@ def parseArgs() :
 	parser.add_argument('--servos', action='store', help='Specify particular servos.  Lists must be comma seperated with no spaces')
 	parser.add_argument('--playpose', action='store', help='Move the servos to positions specified in pose')
 	parser.add_argument('--relax', action='store_true', help='Relax the servos')
+	parser.add_argument('--center', action='store_true', help='Mover to center position')
 	parser.add_argument('--nodir', action='store_true', help='Disable use of direction pin')
 	parser.add_argument('--port', action='store', help="Specify different serial port ie '/dev/ttyACM0")
 	parser.add_argument('--baud', action='store', help="Specify baud rate for the serial port")
@@ -397,7 +404,7 @@ def parseArgs() :
 class Arguments(object) :	# dummy class for command line arguments
 	pass
 	
-if __name__ == '__main__' :		# Running as a standalone, loop and print temperature of servo 1
+if __name__ == '__main__' :		# Running as a standalone, read args and run the commands
 	import argparse	
 	parseArgs()	
 	processArgs()
