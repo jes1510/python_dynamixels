@@ -24,5 +24,6 @@ If a Raspberry Pi is being used then the startup config needs to be modified to
 set the UART crystal to allow 1Mbps transfer. The TTY attached to the com
 port needs to be disabled as well. Make sure to set the baud rate of
 the TTY to 1Mbps
+
 -Jesse Merritt
 '''
