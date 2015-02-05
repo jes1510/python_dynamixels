@@ -129,7 +129,7 @@ def reset(index) :
 	THIS WILL DESTROY ALL SETTINGS ON THE SERVO!!!!
 	'''
 	direction(tx)				# set the direction to be transmit
-	length = 2	# configure length
+	length = 2	# configure length	
 	checksum = 255-((index+length+AX_RESET)%256)    # calculate checksum, same as ~(sum(data))  
 	port.write(chr(0xFF)+chr(0xFF)+chr(index)+chr(length)+chr(AX_RESET))	# Write the first part of the protocol
 	port.write(chr(checksum))	# write the checksum
@@ -375,7 +375,16 @@ def processArgs() :
 		positions = []
 		for i in connectedServos: positions.append(512)
 		groupMove(connectedServos, positions)
-		
+
+	if Arguments.reset :
+                if Arguments.verbose :
+                        print "Reset servo " + Arguments.reset
+                reset(int(Arguments.reset))
+
+	if Arguments.id :
+                original, new = Arguments.id.split(',')
+                
+                setReg(int(original), 0x03, [int(new)])
 	
 	
 def parseArgs() :
@@ -395,7 +404,9 @@ def parseArgs() :
 	parser.add_argument('--nodir', action='store_true', help='Disable use of direction pin')
 	parser.add_argument('--port', action='store', help="Specify different serial port ie '/dev/ttyACM0")
 	parser.add_argument('--baud', action='store', help="Specify baud rate for the serial port")
-	parser.add_argument('--timeout', action='store', help="Specify timeout for the serial port")	
+	parser.add_argument('--timeout', action='store', help="Specify timeout for the serial port")
+	parser.add_argument('--reset', action='store', help='Reset servo to factory defaults')
+	parser.add_argument('--id', action='store', help='Change ID of single servo')
 	parser.parse_args(namespace=Arguments)	
 
 		
