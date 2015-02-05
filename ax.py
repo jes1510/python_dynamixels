@@ -27,6 +27,9 @@ the TTY to 1Mbps
 import serial                   # we need to import the pySerial stuff to use
 import time						# time module for sleeps and such
 import RPi.GPIO as GPIO			# GPIO control module
+import axReg  
+
+registers = axReg.AXRegisters
 
 # important AX-12 constants
 AX_SYNC_WRITE = 0x83
